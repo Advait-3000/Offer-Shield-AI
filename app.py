@@ -5,8 +5,7 @@ import os
 import tempfile
 from datetime import datetime
 import json
-import PyPDF2
-import docx
+# Removed file extraction imports
 from dotenv import load_dotenv
 
 # Import our modules
@@ -295,24 +294,7 @@ if 'file_name' not in st.session_state:
     st.session_state.file_name = ""
 
 # ============ FUNCTIONS ============
-def extract_text_from_file(uploaded_file):
-    """Extract text from uploaded file"""
-    file_extension = uploaded_file.name.split('.')[-1].lower()
-    
-    if file_extension == 'pdf':
-        reader = PyPDF2.PdfReader(uploaded_file)
-        text = ""
-        for page in reader.pages:
-            text += page.extract_text() or ""
-        return text
-    elif file_extension == 'docx':
-        doc = docx.Document(uploaded_file)
-        text = ""
-        for para in doc.paragraphs:
-            text += para.text + "\n"
-        return text
-    else:  # txt
-        return uploaded_file.read().decode('utf-8')
+# File extraction function removed as we now use text input
 
 # ============ UI ============
 
@@ -329,55 +311,51 @@ st.markdown("""
 col1, col2 = st.columns([3, 2])
 
 with col1:
-    st.markdown('<p class="section-title">📄 Upload Offer Document</p>', unsafe_allow_html=True)
+    st.markdown('<p class="section-title">📝 Paste Offer Text</p>', unsafe_allow_html=True)
     
-    # Upload Section
-    uploaded_file = st.file_uploader(
+    # Text Input Section
+    offer_text_input = st.text_area(
         " ",
-        type=["pdf", "docx", "txt"],
-        help="Upload internship or job offer documents for AI-powered scam detection",
+        height=250,
+        help="Paste the internship or job offer text here for AI-powered scam detection",
+        placeholder="Paste the offer email or document text here...",
         label_visibility="collapsed"
     )
     
-    if uploaded_file:
-        st.success(f"✅ File uploaded: **{uploaded_file.name}**")
-        st.session_state.file_name = uploaded_file.name
-        
-        # Extract text
-        with st.spinner("📖 Reading document..."):
-            st.session_state.file_text = extract_text_from_file(uploaded_file)
-        
-        # Analyze Button
-        if st.button("🚀 Verify Offer Now", use_container_width=True):
-            if st.session_state.file_text:
-                with st.spinner("🧠 AI is analyzing the offer..."):
-                    try:
-                        # Step 1: Extract details using Gemini
-                        gemini = GeminiHelper()
-                        extracted = gemini.extract_details(st.session_state.file_text)
-                        st.session_state.extracted_data = extracted
-                        
-                        # Step 2: Verify using Gemini
-                        verification = gemini.verify_offer(extracted)
-                        st.session_state.verification_data = verification
-                        
-                        # Step 3: ML Prediction
-                        ml = MLPredictor()
-                        ml_result = ml.predict_risk(
-                            extracted,
-                            verification["verification_checks"]
-                        )
-                        st.session_state.ml_prediction = ml_result
-                        
-                        st.session_state.analyzed = True
-                        st.success("✅ Analysis Complete!")
-                        st.balloons()
-                        
-                    except Exception as e:
-                        st.error(f"⚠️ Error: {str(e)}")
-                        st.info("💡 Make sure GEMINI_API_KEY is set in .env file")
-            else:
-                st.warning("⚠️ Please upload a file first!")
+    # Analyze Button
+    if st.button("🚀 Verify Offer Now", use_container_width=True):
+        if offer_text_input.strip():
+            st.session_state.file_name = "Pasted Text"
+            st.session_state.file_text = offer_text_input
+            
+            with st.spinner("🧠 AI is analyzing the offer..."):
+                try:
+                    # Step 1: Extract details using Gemini
+                    gemini = GeminiHelper()
+                    extracted = gemini.extract_details(st.session_state.file_text)
+                    st.session_state.extracted_data = extracted
+                    
+                    # Step 2: Verify using Gemini
+                    verification = gemini.verify_offer(extracted)
+                    st.session_state.verification_data = verification
+                    
+                    # Step 3: ML Prediction
+                    ml = MLPredictor()
+                    ml_result = ml.predict_risk(
+                        extracted,
+                        verification["verification_checks"]
+                    )
+                    st.session_state.ml_prediction = ml_result
+                    
+                    st.session_state.analyzed = True
+                    st.success("✅ Analysis Complete!")
+                    st.balloons()
+                    
+                except Exception as e:
+                    st.error(f"⚠️ Error: {str(e)}")
+                    st.info("💡 Make sure GEMINI_API_KEY is set in .env file")
+        else:
+            st.warning("⚠️ Please paste some text first!")
 
 with col2:
     st.markdown('<p class="section-title">📊 Quick Stats</p>', unsafe_allow_html=True)
